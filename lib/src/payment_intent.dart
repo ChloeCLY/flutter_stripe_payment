@@ -2,24 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:stripe_payment/src/payment_method.dart';
 
 class PaymentIntent {
-  PaymentMethodRequest paymentMethod;
-  String paymentMethodId;
-  String returnURL;
+  PaymentMethodRequest? paymentMethod;
+  String? paymentMethodId;
+  String? returnURL;
   String clientSecret;
-  bool isSavingPaymentMethod;
+  bool? isSavingPaymentMethod;
 
   PaymentIntent({
     this.paymentMethod,
     this.paymentMethodId,
     this.returnURL,
-    @required this.clientSecret,
+    required this.clientSecret,
     this.isSavingPaymentMethod,
   });
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     if (this.paymentMethod != null) {
-      data['paymentMethod'] = this.paymentMethod.toJson();
+      data['paymentMethod'] = this.paymentMethod!.toJson();
     }
     if (this.paymentMethodId != null)
       data['paymentMethodId'] = this.paymentMethodId;
@@ -32,9 +32,9 @@ class PaymentIntent {
 }
 
 class PaymentIntentResult {
-  String status;
-  String paymentIntentId;
-  String paymentMethodId;
+  String? status;
+  String? paymentIntentId;
+  String? paymentMethodId;
 
   PaymentIntentResult(
       {this.status, this.paymentIntentId, this.paymentMethodId});
@@ -59,9 +59,9 @@ class PaymentIntentResult {
 }
 
 class SetupIntentResult {
-  String status;
-  String paymentIntentId;
-  String setupIntentId;
+  String? status;
+  String? paymentIntentId;
+  String? setupIntentId;
 
   SetupIntentResult({
     this.status,
