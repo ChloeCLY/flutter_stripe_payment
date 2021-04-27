@@ -7,7 +7,9 @@
 //
 
 #import "TPSStripeManager.h"
-#import <Stripe/Stripe.h>
+#import <Stripe/Stripe-Swift.h>
+
+#import <stripe_payment/stripe_payment-umbrella.h>
 
 #import "TPSError.h"
 #import "TPSStripeManager+Constants.h"
@@ -301,7 +303,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
     publishableKey = options[@"publishableKey"];
     merchantId = options[@"merchantId"];
     errorCodes = errors;
-    [Stripe setDefaultPublishableKey:publishableKey];
+    [StripeAPI setDefaultPublishableKey:publishableKey];
 }
 
 -(void)setStripeAccount:(NSString *)_stripeAccount {
@@ -791,20 +793,28 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
     STPUserInformation *prefilledInformation = [self userInformation:options[@"prefilledInformation"]];
     NSString *nextPublishableKey = options[@"publishableKey"] ? options[@"publishableKey"] : publishableKey;
     UIModalPresentationStyle formPresentation = [self formPresentation:options[@"presentation"]];
-    STPTheme *theme = [self formTheme:options[@"theme"]];
+//    STPTheme *theme = [self formTheme:options[@"theme"]];
 
     STPPaymentConfiguration *configuration = [[STPPaymentConfiguration alloc] init];
     [configuration setRequiredBillingAddressFields:requiredBillingAddressFields];
     [configuration setCompanyName:companyName];
     [configuration setPublishableKey:nextPublishableKey];
+    
+    STPAddCardViewController *vc = [[STPAddCardViewController alloc] init];
 
-    STPAddCardViewController *vc = [[STPAddCardViewController alloc] initWithConfiguration:configuration theme:theme];
     vc.delegate = self;
+
     vc.prefilledInformation = prefilledInformation;
+
     // STPAddCardViewController must be shown inside a UINavigationController.
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:vc];
+
     [navigationController setModalPresentationStyle:formPresentation];
-    navigationController.navigationBar.stp_theme = theme;
+
+    // if (navigationController.navigationBar != nil) {
+    //     navigationController.navigationBar.stp_theme = theme;
+    // }
+    
     // move to the end of main queue
     // allow the execution of hiding modal
     // to be finished first
@@ -827,6 +837,8 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
     // Save promise handlers to use in `paymentAuthorizationViewController`
     promiseResolver = resolve;
     promiseRejector = reject;
+    
+    NSLog(@"native paymentRequestWithApplePay");
 
     NSUInteger requiredShippingAddressFields = [self applePayAddressFields:options[@"requiredShippingAddressFields"]];
     NSUInteger requiredBillingAddressFields = [self applePayAddressFields:options[@"requiredBillingAddressFields"]];
@@ -856,7 +868,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
         [summaryItems addObject:summaryItem];
     }
 
-    PKPaymentRequest *paymentRequest = [Stripe paymentRequestWithMerchantIdentifier:merchantId country:countryCode currency:currencyCode];
+    PKPaymentRequest *paymentRequest = [StripeAPI paymentRequestWithMerchantIdentifier:merchantId country:countryCode currency:currencyCode];
 
     [paymentRequest setRequiredShippingAddressFields:requiredShippingAddressFields];
     [paymentRequest setRequiredBillingAddressFields:requiredBillingAddressFields];
@@ -1183,7 +1195,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
 }
 
 - (BOOL)canSubmitPaymentRequest:(PKPaymentRequest *)paymentRequest rejecter:(RCTPromiseRejectBlock)reject {
-    if (![Stripe deviceSupportsApplePay]) {
+    if (![StripeAPI deviceSupportsApplePay]) {
         NSDictionary *error = [errorCodes valueForKey:kErrorKeyDeviceNotSupportsNativePay];
         reject(error[kErrorKeyCode], error[kErrorKeyDescription], nil);
         return NO;
@@ -1211,7 +1223,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
 
 - (void)addCardViewController:(STPAddCardViewController *)addCardViewController
        didCreatePaymentMethod:(STPPaymentMethod *)paymentMethod
-                   completion:(STPErrorBlock)completion {
+                   completion:(void (^)(NSError * _Nullable))completion {
     [RCTPresentedViewController() dismissViewControllerAnimated:YES completion:nil];
 
     requestIsCompleted = YES;
@@ -1295,7 +1307,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
                                             url:TPSAppInfoURL];
     });
 
-    STPAPIClient * client = [[STPAPIClient alloc] initWithPublishableKey:[Stripe defaultPublishableKey]];
+    STPAPIClient * client = [[STPAPIClient alloc] initWithPublishableKey:[StripeAPI defaultPublishableKey]];
     client.appInfo = info;
     client.stripeAccount = stripeAccount;
 
@@ -1488,7 +1500,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
             return @"discover";
         case STPCardBrandDinersClub:
             return @"diners";
-        case STPCardBrandMasterCard:
+        case STPCardBrandMastercard:
             return @"mastercard";
         case STPCardBrandUnionPay:
             return @"unionpay";
@@ -1500,7 +1512,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
 
 /// API: https://stripe.com/docs/api/cards/object#card_object-brand
 - (NSString *)cardBrandAsPresentableBrandString:(STPCardBrand)inputBrand {
-    return STPStringFromCardBrand(inputBrand);
+    return [STPCardBrandUtilities stringFromCardBrand:inputBrand];
 }
 
 - (NSString *)cardFunding:(STPCardFundingType)inputFunding {
@@ -1599,7 +1611,7 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
             return @"bancontact";
         case STPSourceTypeGiropay:
             return @"giropay";
-        case STPSourceTypeIDEAL:
+        case STPSourceTypeiDEAL:
             return @"ideal";
         case STPSourceTypeSEPADebit:
             return @"sepaDebit";
@@ -1821,6 +1833,10 @@ void initializeTPSPaymentNetworksWithConditionalMappings() {
 
         if ((&PKPaymentNetworkAmex) != NULL) {
             mutableMap[TPSPaymentNetworkAmex] = PKPaymentNetworkAmex;
+        }
+
+        if ((&PKPaymentNetworkChinaUnionPay) != NULL) {
+            mutableMap[TPSPaymentNetworkChinaUnionPay] = PKPaymentNetworkChinaUnionPay;
         }
 
         if ((&PKPaymentNetworkDiscover) != NULL) {

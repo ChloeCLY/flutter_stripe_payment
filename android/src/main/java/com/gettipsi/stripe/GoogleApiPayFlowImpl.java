@@ -2,6 +2,8 @@ package com.gettipsi.stripe;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 import com.facebook.react.bridge.Promise;
@@ -25,7 +27,11 @@ import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.Wallet;
 import com.google.android.gms.wallet.WalletConstants;
 import com.stripe.android.BuildConfig;
+import com.stripe.android.Stripe;
 import com.stripe.android.model.Token;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -52,10 +58,12 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
   private static final int LOAD_PAYMENT_DATA_REQUEST_CODE = 65534;
 
   private PaymentsClient mPaymentsClient;
+  private final Fun0<Stripe> mStripe;
   private Promise payPromise;
 
-  public GoogleApiPayFlowImpl(@NonNull Fun0<Activity> activityProvider) {
+  public GoogleApiPayFlowImpl(@NonNull Fun0<Activity> activityProvider, Fun0<Stripe> stripeProvider) {
     super(activityProvider);
+    this.mStripe = stripeProvider;
   }
 
   private PaymentsClient createPaymentsClient(@NonNull Activity activity) {
@@ -94,7 +102,7 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
       .setPaymentMethodTokenizationType(WalletConstants.PAYMENT_METHOD_TOKENIZATION_TYPE_PAYMENT_GATEWAY)
       .addParameter("gateway", "stripe")
       .addParameter("stripe:publishableKey", getPublishableKey())
-      .addParameter("stripe:version", BuildConfig.VERSION_NAME)
+      .addParameter("stripe:version", Stripe.VERSION_NAME)
       .build();
   }
 
@@ -229,8 +237,21 @@ public final class GoogleApiPayFlowImpl extends PayFlow {
           case Activity.RESULT_OK:
             PaymentData paymentData = PaymentData.getFromIntent(data);
             ArgCheck.nonNull(paymentData);
+
             String tokenJson = paymentData.getPaymentMethodToken().getToken();
-            Token token = Token.fromString(tokenJson);
+            Token token = null;
+            try{
+              token = Token.fromJson(new JSONObject(tokenJson));
+            } catch (JSONException e) {
+              payPromise.resolve(
+                      putExtraToTokenMap(
+                              convertTokenToWritableMap(token),
+                              getBillingAddress(paymentData),
+                              paymentData.getShippingAddress(),
+                              paymentData.getEmail()));
+              break;
+            }
+            Log.d(TAG, "token: " + tokenJson);
             if (token == null) {
               payPromise.reject(
                 getErrorCode("parseResponse"),

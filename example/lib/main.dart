@@ -20,7 +20,7 @@ class _MyAppState extends State<MyApp> {
 
   //this client secret is typically created by a backend system
   //check https://stripe.com/docs/payments/payment-intents#passing-to-client
-  final String? _paymentIntentClientSecret = null;
+  final String _paymentIntentClientSecret = '';
 
   PaymentIntentResult? _paymentIntent;
   Source? _source;
@@ -195,11 +195,11 @@ class _MyAppState extends State<MyApp> {
                           StripePayment.confirmPaymentIntent(
                             PaymentIntent(
                               clientSecret: _paymentIntentClientSecret,
-                              paymentMethodId: _paymentMethod.id,
+                              paymentMethodId: _paymentMethod!.id,
                               isSavingPaymentMethod: true,
                             ),
                           ).then((paymentIntent) {
-                            _scaffoldKey.currentState.showSnackBar(SnackBar(
+                            _scaffoldKey.currentState?.showSnackBar(SnackBar(
                                 content: Text(
                                     'Received ${paymentIntent.paymentIntentId}')));
                             setState(() {

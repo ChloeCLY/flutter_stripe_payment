@@ -13,6 +13,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.wallet.WalletConstants;
 import com.stripe.android.BuildConfig;
+import com.stripe.android.Stripe;
 
 public abstract class PayFlow {
 
@@ -26,8 +27,8 @@ public abstract class PayFlow {
     this.activityProvider = activityProvider;
   }
 
-  public static PayFlow create(Fun0<Activity> activityProvider) {
-    return new GoogleApiPayFlowImpl(activityProvider);
+  public static PayFlow create(Fun0<Activity> activityProvider, Fun0<Stripe> stripeProvider) {
+    return new GoogleApiPayFlowImpl(activityProvider, stripeProvider);
   }
 
   private static boolean isValidEnvironment(int environment) {

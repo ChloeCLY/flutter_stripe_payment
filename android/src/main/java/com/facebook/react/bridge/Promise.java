@@ -1,5 +1,6 @@
 package com.facebook.react.bridge;
 
+import android.os.Handler;
 import io.flutter.plugin.common.MethodChannel;
 
 /**
@@ -7,21 +8,43 @@ import io.flutter.plugin.common.MethodChannel;
  */
 public class Promise {
 
-    final MethodChannel.Result result;
+    private final MethodChannel.Result result;
+
+    private final Handler handler = new Handler();
+
+    private Runnable whenComplete;
 
     public Promise(MethodChannel.Result result) {
         this.result = result;
     }
 
+    public void setWhenComplete(Runnable whenComplete) {
+        this.whenComplete = whenComplete;
+    }
+
     public void resolve(Object result) {
         this.result.success(result);
+
+        if (whenComplete != null) {
+            handler.post(whenComplete);
+        }
+    }
+
+
+
+    public void reject(String errorCode) {
+        reject(errorCode, null);
     }
 
     public void reject(String errorCode, String message) {
-        this.result.error(errorCode, message, null);
+        reject(errorCode, message, null);
     }
 
-    public void reject(String errorCode) {
-        this.reject(errorCode, null);
+    public void reject(String errorCode, String message, Object details) {
+        result.error(errorCode, message, details);
+
+        if (whenComplete != null) {
+            handler.post(whenComplete);
+        }
     }
 }
